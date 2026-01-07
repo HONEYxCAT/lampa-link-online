@@ -4,6 +4,7 @@
 	var STORAGE_KEY_SERVER = "lamponline_server_url";
 	var STORAGE_KEY_SERVERS = "lamponline_servers";
 	var STORAGE_KEY_ACTIVE_SERVER = "lamponline_active_server";
+	var STORAGE_KEY_SERVER_COUNTRIES = "lamponline_server_countries";
 
 	function getServersList() {
 		var servers = Lampa.Storage.get(STORAGE_KEY_SERVERS, []);
@@ -55,6 +56,7 @@
 			if (oldServer === removedUrl) {
 				Lampa.Storage.set(STORAGE_KEY_SERVER, "");
 			}
+			removeServerCountry(removedUrl);
 			var active = getActiveServerIndex();
 			if (active >= servers.length) {
 				setActiveServerIndex(Math.max(0, servers.length - 1));
@@ -62,6 +64,59 @@
 			return true;
 		}
 		return false;
+	}
+
+	function getServerCountries() {
+		var countries = Lampa.Storage.get(STORAGE_KEY_SERVER_COUNTRIES, {});
+		if (typeof countries === "string") {
+			try {
+				countries = JSON.parse(countries);
+			} catch (e) {
+				countries = {};
+			}
+		}
+		return countries || {};
+	}
+
+	function setServerCountry(url, country) {
+		if (!url || !country) return;
+		var normalized = url
+			.replace(/^https?:\/\//, "")
+			.replace(/\/+$/, "")
+			.toLowerCase();
+		var countries = getServerCountries();
+		countries[normalized] = country;
+		Lampa.Storage.set(STORAGE_KEY_SERVER_COUNTRIES, countries);
+	}
+
+	function getServerCountry(url) {
+		if (!url) return "";
+		var normalized = url
+			.replace(/^https?:\/\//, "")
+			.replace(/\/+$/, "")
+			.toLowerCase();
+		var countries = getServerCountries();
+		return countries[normalized] || "";
+	}
+
+	function removeServerCountry(url) {
+		if (!url) return;
+		var normalized = url
+			.replace(/^https?:\/\//, "")
+			.replace(/\/+$/, "")
+			.toLowerCase();
+		var countries = getServerCountries();
+		delete countries[normalized];
+		Lampa.Storage.set(STORAGE_KEY_SERVER_COUNTRIES, countries);
+	}
+
+	function formatServerDisplay(url) {
+		var displayName = url.replace(/^https?:\/\//, "");
+		var country = getServerCountry(url);
+		if (country) {
+			return displayName + " (" + country + ")";
+		}
+		return displayName;
 	}
 
 	function getServerUrl() {
@@ -1098,7 +1153,7 @@
 									.find("div")
 									.text(
 										getServerUrl()
-											? getHostKey()
+											? formatServerDisplay(getServerUrl())
 											: Lampa.Lang.translate("lampac_not_set")
 									);
 								Lampa.Activity.replace();
@@ -1111,7 +1166,7 @@
 							.find("div")
 							.text(
 								getServerUrl()
-									? getHostKey()
+									? formatServerDisplay(getServerUrl())
 									: Lampa.Lang.translate("lampac_not_set")
 							);
 						Lampa.Activity.replace();
@@ -1132,7 +1187,9 @@
 			serverBtn
 				.find("div")
 				.text(
-					getServerUrl() ? getHostKey() : Lampa.Lang.translate("lampac_not_set")
+					getServerUrl()
+						? formatServerDisplay(getServerUrl())
+						: Lampa.Lang.translate("lampac_not_set")
 				);
 			serverBtn.on("hover:enter", function () {
 				openServerMenu(function () {
@@ -1140,7 +1197,7 @@
 						.find("div")
 						.text(
 							getServerUrl()
-								? getHostKey()
+								? formatServerDisplay(getServerUrl())
 								: Lampa.Lang.translate("lampac_not_set")
 						);
 				});
@@ -2032,7 +2089,7 @@
 					var activeIndex = getActiveServerIndex();
 					var items = servers.map(function (server, index) {
 						return {
-							title: server.replace(/^https?:\/\//, ""),
+							title: formatServerDisplay(server),
 							index: index,
 							selected: index === activeIndex
 						};
@@ -2056,7 +2113,9 @@
 				})
 			);
 			filter.chosen("server", [
-				getServerUrl() ? getHostKey() : Lampa.Lang.translate("lampac_not_set")
+				getServerUrl()
+					? formatServerDisplay(getServerUrl())
+					: Lampa.Lang.translate("lampac_not_set")
 			]);
 			this.selected(filter_items);
 		};
@@ -3518,7 +3577,7 @@
 		}
 
 		servers.forEach(function (server, index) {
-			var displayName = server.replace(/^https?:\/\//, "");
+			var displayName = formatServerDisplay(server);
 			var isActive = index === activeIndex;
 			var item = $(
 				'<div class="settings-param selector lamponline-server-item" data-server-index="' +
@@ -3671,9 +3730,8 @@
 		var items = [];
 
 		servers.forEach(function (server, index) {
-			var displayName = server.replace(/^https?:\/\//, "");
 			items.push({
-				title: displayName,
+				title: formatServerDisplay(server),
 				index: index,
 				selected: index === activeIndex
 			});
@@ -3700,7 +3758,7 @@
 						if (new_value) Lampa.Activity.replace();
 					});
 				} else if (item.selected) {
-					var displayName = servers[item.index].replace(/^https?:\/\//, "");
+					var displayName = formatServerDisplay(servers[item.index]);
 					Lampa.Select.show({
 						title: displayName,
 						items: [
@@ -3869,7 +3927,7 @@
 			var normalizedUrl = normalizeUrl(url);
 			var isAdded = normalizedUserServers.indexOf(normalizedUrl) !== -1;
 			items.push({
-				title: url.replace(/^https?:\/\//, ""),
+				title: formatServerDisplay(url),
 				url: url,
 				subtitle: isAdded
 					? Lampa.Lang.translate("lampac_server_already_added")
@@ -3929,9 +3987,13 @@
 				}
 
 				var serversToCheck = [];
+				var serverCountryMap = {};
 				json.forEach(function (server) {
 					if (server.base_url) {
 						serversToCheck.push(server.base_url);
+						if (server.country) {
+							serverCountryMap[server.base_url] = server.country;
+						}
 					}
 				});
 
@@ -3963,6 +4025,9 @@
 						checked++;
 						if (isWorking) {
 							workingServers.push(serverUrl);
+							if (serverCountryMap[serverUrl]) {
+								setServerCountry(serverUrl, serverCountryMap[serverUrl]);
+							}
 						}
 
 						updateNoty();
