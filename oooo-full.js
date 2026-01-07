@@ -56,7 +56,6 @@
 			if (oldServer === removedUrl) {
 				Lampa.Storage.set(STORAGE_KEY_SERVER, "");
 			}
-			removeServerCountry(removedUrl);
 			var active = getActiveServerIndex();
 			if (active >= servers.length) {
 				setActiveServerIndex(Math.max(0, servers.length - 1));
