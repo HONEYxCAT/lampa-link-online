@@ -152,11 +152,6 @@
 			RegistryVersion: 149,
 			ClientTimeout: 8000
 		},
-		Auth: {
-			LampaUid: "",
-			LampacUnicId: "guest",
-			Token: ""
-		},
 		StorageKeys: {
 			LampacUnicId: "lampac_unic_id",
 			LampacProfileId: "lampac_profile_id",
@@ -167,25 +162,13 @@
 			OnlineChoicePrefix: "online_choice_",
 			OnlineWatchedLast: "online_watched_last",
 			OnlineView: "online_view"
-		},
-		Defined: {
-			api: "lampac",
-			apn: ""
 		}
 	};
 
 	var Defined = {
-		api: Config.Defined.api,
 		getLocalhost: function () {
 			return Config.Urls.getLocalhost();
-		},
-		apn: Config.Defined.apn
-	};
-
-	var existingUid = Lampa.Storage.get(Config.StorageKeys.LampacUnicId, "");
-	var MY_AUTH = {
-		lampa_uid: Config.Auth.LampaUid,
-		lampac_unic_id: existingUid || "guest"
+		}
 	};
 
 	var balansers_with_search;
