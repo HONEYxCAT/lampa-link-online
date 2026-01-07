@@ -601,23 +601,6 @@
 			url = url + (url.indexOf("?") >= 0 ? "&" : "?") + query.join("&");
 		}
 
-		if (url.indexOf("uid=") == -1) {
-			url = Lampa.Utils.addUrlComponent(
-				url,
-				"uid=" + encodeURIComponent(MY_AUTH.lampac_unic_id)
-			);
-		}
-		if (url.indexOf("device_id=") == -1) {
-			url = Lampa.Utils.addUrlComponent(
-				url,
-				"device_id=" + encodeURIComponent(MY_AUTH.lampa_uid)
-			);
-		}
-		if (url.indexOf("token=") == -1) {
-			var token = Config.Auth.Token;
-			if (token) url = Lampa.Utils.addUrlComponent(url, "token=" + token);
-		}
-
 		return url;
 	}
 
