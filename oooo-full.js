@@ -584,6 +584,14 @@
 			url = url + (url.indexOf("?") >= 0 ? "&" : "?") + query.join("&");
 		}
 
+		if (url.indexOf("uid=") == -1) {
+			var visitorId = Lampa.Storage.get("lampac_unic_id", "") || "guest";
+			url = Lampa.Utils.addUrlComponent(
+				url,
+				"uid=" + encodeURIComponent(visitorId)
+			);
+		}
+
 		return url;
 	}
 
