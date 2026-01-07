@@ -98,17 +98,6 @@
 		return countries[normalized] || "";
 	}
 
-	function removeServerCountry(url) {
-		if (!url) return;
-		var normalized = url
-			.replace(/^https?:\/\//, "")
-			.replace(/\/+$/, "")
-			.toLowerCase();
-		var countries = getServerCountries();
-		delete countries[normalized];
-		Lampa.Storage.set(STORAGE_KEY_SERVER_COUNTRIES, countries);
-	}
-
 	function formatServerDisplay(url) {
 		var displayName = url.replace(/^https?:\/\//, "");
 		var country = getServerCountry(url);
