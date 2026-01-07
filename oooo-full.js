@@ -3810,9 +3810,9 @@
 		var baseUrl = serverUrl.replace(/\/+$/, "");
 		var checkUrl =
 			baseUrl +
-			"/lite/events?life=true&id=1&serial=0&title=test&original_title=test&year=2024&source=tmdb&clarification=0&similar=false&rchtype=&uid=guest&device_id=";
+			"/lite/events?life=true&id=76600&imdb_id=tt1630029&kinopoisk_id=505898&serial=0&title=Avatar: The Way of Water&original_title=Avatar: The Way of Water&original_language=en&year=2022&source=tmdb&clarification=0&similar=false&rchtype=&uid=guest&device_id=";
 		var attempts = 0;
-		var maxAttempts = 5;
+		var maxAttempts = 15;
 		var memkey = "";
 
 		function checkForMirage(sources) {
@@ -3829,10 +3829,21 @@
 		function poll() {
 			var net = new Lampa.Reguest();
 			net.timeout(5000);
-			var url = memkey ? baseUrl + "/lifeevents?memkey=" + memkey : checkUrl;
+			var url = memkey
+				? baseUrl +
+					"/lifeevents?memkey=" +
+					memkey +
+					"&id=76600&imdb_id=tt1630029&kinopoisk_id=505898&serial=0&title=Avatar: The Way of Water&original_title=Avatar: The Way of Water&original_language=en&year=2022&source=tmdb&clarification=0&similar=false&rchtype=&uid=guest&device_id="
+				: checkUrl;
 			net.silent(
 				url,
 				function (json) {
+					var sources =
+						json && json.online
+							? json.online
+							: Lampa.Arrays.isArray(json)
+								? json
+								: [];
 					if (json && json.accsdb) {
 						callback(false);
 						return;
@@ -3840,25 +3851,15 @@
 					if (json && json.memkey) {
 						memkey = json.memkey;
 					}
-					var sources =
-						json && json.online
-							? json.online
-							: Lampa.Arrays.isArray(json)
-								? json
-								: [];
-					if (checkForMirage(sources)) {
-						callback(true);
-						return;
-					}
 					if (json && json.ready) {
-						callback(false);
+						callback(checkForMirage(sources));
 						return;
 					}
 					attempts++;
 					if (attempts >= maxAttempts) {
-						callback(false);
+						callback(checkForMirage(sources));
 					} else {
-						setTimeout(poll, 1500);
+						setTimeout(poll, 1000);
 					}
 				},
 				function () {
