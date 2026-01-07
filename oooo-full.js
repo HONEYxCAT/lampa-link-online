@@ -1089,6 +1089,33 @@
 					else onFilterSelectItem(a, b);
 				} else if (type == "sort") {
 					onSortSelect(a);
+				} else if (type == "server") {
+					Lampa.Select.close();
+					if (a.add) {
+						openServerInput(function (new_value) {
+							if (new_value) {
+								serverBtn
+									.find("div")
+									.text(
+										getServerUrl()
+											? getHostKey()
+											: Lampa.Lang.translate("lampac_not_set")
+									);
+								Lampa.Activity.replace();
+							}
+						});
+					} else {
+						setActiveServerIndex(a.index);
+						ensureRchNws();
+						serverBtn
+							.find("div")
+							.text(
+								getServerUrl()
+									? getHostKey()
+									: Lampa.Lang.translate("lampac_not_set")
+							);
+						Lampa.Activity.replace();
+					}
 				}
 			};
 			if (filter.addButtonBack) filter.addButtonBack();
@@ -1999,6 +2026,25 @@
 				add("season", Lampa.Lang.translate("torrent_serial_season"));
 			filter.set("filter", select);
 			filter.set(
+				"server",
+				(function () {
+					var servers = getServersList();
+					var activeIndex = getActiveServerIndex();
+					var items = servers.map(function (server, index) {
+						return {
+							title: server.replace(/^https?:\/\//, ""),
+							index: index,
+							selected: index === activeIndex
+						};
+					});
+					items.push({
+						title: Lampa.Lang.translate("lampac_add_server"),
+						add: true
+					});
+					return items;
+				})()
+			);
+			filter.set(
 				"sort",
 				filter_sources.map(function (e) {
 					return {
@@ -2009,6 +2055,9 @@
 					};
 				})
 			);
+			filter.chosen("server", [
+				getServerUrl() ? getHostKey() : Lampa.Lang.translate("lampac_not_set")
+			]);
 			this.selected(filter_items);
 		};
 
@@ -3148,6 +3197,12 @@
 				en: "Delete",
 				zh: "删除"
 			},
+			lampac_edit_server: {
+				ru: "Редактировать",
+				uk: "Редагувати",
+				en: "Edit",
+				zh: "编辑"
+			},
 			lampac_server_address: {
 				ru: "Адрес сервера",
 				uk: "Адреса сервера",
@@ -3225,6 +3280,18 @@
 				uk: "Оновити список",
 				en: "Refresh list",
 				zh: "刷新列表"
+			},
+			lampac_server_already_added: {
+				ru: "Уже добавлен",
+				uk: "Вже додано",
+				en: "Already added",
+				zh: "已添加"
+			},
+			lampac_public_servers: {
+				ru: "Публичные серверы",
+				uk: "Публічні сервери",
+				en: "Public servers",
+				zh: "公共服务器"
 			}
 		});
 
@@ -3492,6 +3559,21 @@
 		Lampa.Controller.collectionFocus(false, body);
 	}
 
+	function editServer(index, newUrl) {
+		var servers = getServersList();
+		if (index >= 0 && index < servers.length && newUrl) {
+			var oldUrl = servers[index];
+			servers[index] = newUrl;
+			Lampa.Storage.set(STORAGE_KEY_SERVERS, servers);
+			var oldServer = Lampa.Storage.get(STORAGE_KEY_SERVER, "");
+			if (oldServer === oldUrl) {
+				Lampa.Storage.set(STORAGE_KEY_SERVER, newUrl);
+			}
+			return true;
+		}
+		return false;
+	}
+
 	function showServerActions(index, serverName, callback) {
 		var servers = getServersList();
 		var activeIndex = getActiveServerIndex();
@@ -3505,6 +3587,11 @@
 				select: true
 			});
 		}
+
+		items.push({
+			title: Lampa.Lang.translate("lampac_edit_server"),
+			edit: true
+		});
 
 		items.push({
 			title: Lampa.Lang.translate("lampac_delete_server"),
@@ -3523,11 +3610,32 @@
 				if (item.select) {
 					setActiveServerIndex(index);
 					ensureRchNws();
+					Lampa.Controller.toggle(enabled);
+					if (callback) callback();
+				} else if (item.edit) {
+					Lampa.Input.edit(
+						{
+							title: Lampa.Lang.translate("lampac_server_address"),
+							value: servers[index],
+							placeholder: "192.168.1.1:9118",
+							nosave: true,
+							free: true,
+							nomic: true
+						},
+						function (new_value) {
+							if (new_value && new_value !== servers[index]) {
+								editServer(index, new_value);
+								ensureRchNws();
+							}
+							Lampa.Controller.toggle(enabled);
+							if (callback) callback();
+						}
+					);
 				} else if (item.remove) {
 					removeServer(index);
+					Lampa.Controller.toggle(enabled);
+					if (callback) callback();
 				}
-				Lampa.Controller.toggle(enabled);
-				if (callback) callback();
 			}
 		});
 	}
@@ -3597,15 +3705,39 @@
 						title: displayName,
 						items: [
 							{
+								title: Lampa.Lang.translate("lampac_edit_server"),
+								edit: true
+							},
+							{
 								title: Lampa.Lang.translate("lampac_delete_server"),
 								remove: true
 							}
 						],
 						onBack: function () {
-							openServerSelect(callback);
+							Lampa.Controller.toggle(enabled);
+							if (callback) callback();
 						},
 						onSelect: function (a) {
-							if (a.remove) {
+							if (a.edit) {
+								Lampa.Input.edit(
+									{
+										title: Lampa.Lang.translate("lampac_server_address"),
+										value: servers[item.index],
+										placeholder: "192.168.1.1:9118",
+										nosave: true,
+										free: true,
+										nomic: true
+									},
+									function (new_value) {
+										if (new_value && new_value !== servers[item.index]) {
+											editServer(item.index, new_value);
+											ensureRchNws();
+										}
+										Lampa.Controller.toggle(enabled);
+										if (callback) callback();
+									}
+								);
+							} else if (a.remove) {
 								removeServer(item.index);
 								if (callback) callback();
 								Lampa.Controller.toggle(enabled);
@@ -3712,6 +3844,16 @@
 
 	function showPublicServersMenu(workingServers, enabled) {
 		var items = [];
+		var userServers = getServersList();
+
+		function normalizeUrl(url) {
+			return url
+				.replace(/^https?:\/\//, "")
+				.replace(/\/+$/, "")
+				.toLowerCase();
+		}
+
+		var normalizedUserServers = userServers.map(normalizeUrl);
 
 		items.push({
 			title: Lampa.Lang.translate("lampac_refresh_servers"),
@@ -3719,14 +3861,19 @@
 		});
 
 		items.push({
-			title: Lampa.Lang.translate("lampac_servers_list"),
+			title: Lampa.Lang.translate("lampac_public_servers"),
 			separator: true
 		});
 
 		workingServers.forEach(function (url) {
+			var normalizedUrl = normalizeUrl(url);
+			var isAdded = normalizedUserServers.indexOf(normalizedUrl) !== -1;
 			items.push({
 				title: url.replace(/^https?:\/\//, ""),
-				url: url
+				url: url,
+				subtitle: isAdded
+					? Lampa.Lang.translate("lampac_server_already_added")
+					: ""
 			});
 		});
 
@@ -3897,6 +4044,8 @@
 				return;
 			}
 
+			var $serverBtn = $(".simple-button--filter.filter--server");
+
 			var $selectBoxItem = Lampa.Template.get("selectbox_item", {
 				title: Lampa.Lang.translate("settings_rest_source"),
 				subtitle: $("div", $sourceBtn).text()
@@ -3909,6 +4058,22 @@
 			});
 
 			$(".selectbox-item").first().after($selectBoxItem);
+
+			if ($serverBtn.length === 1 && !$serverBtn.hasClass("hide")) {
+				var $serverSelectBoxItem = Lampa.Template.get("selectbox_item", {
+					title: Lampa.Lang.translate("lampac_server_short"),
+					subtitle: $("div", $serverBtn).text()
+				});
+
+				$serverSelectBoxItem.attr("data-lamponline-server", "true");
+
+				$serverSelectBoxItem.on("hover:enter", function () {
+					Lampa.Select.close();
+					$serverBtn.trigger("hover:enter");
+				});
+
+				$(".selectbox-item").first().after($serverSelectBoxItem);
+			}
 
 			Lampa.Controller.collectionSet(
 				$("body > .selectbox").find(".scroll__body")
